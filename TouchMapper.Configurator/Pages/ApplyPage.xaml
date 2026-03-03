@@ -1,0 +1,66 @@
+<UserControl x:Class="TouchMapper.Configurator.Pages.ApplyPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="32">
+        <TextBlock FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8">
+            Apply Mapping &amp; Install Service
+        </TextBlock>
+        <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,20">
+            Click the buttons below in order.  "Apply mapping" writes the Wisp registry
+            entries immediately.  "Install service" installs the background service that
+            auto-corrects the mapping after every sleep/reconnect.
+        </TextBlock>
+
+        <!-- Config summary -->
+        <Border BorderBrush="#ddd" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,10"
+                Background="#FAFAFA">
+            <StackPanel>
+                <TextBlock FontWeight="SemiBold" Text="Configuration Summary" Margin="0,0,0,6"/>
+                <TextBlock x:Name="SummaryText" FontSize="11" Foreground="#444" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Apply mapping -->
+        <Border BorderBrush="#ddd" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="80"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock FontWeight="SemiBold" Text="1.  Apply mapping now"/>
+                    <TextBlock FontSize="11" Foreground="#666" TextWrapping="Wrap"
+                               Text="Writes Wisp registry entries and restarts TabletInputService."/>
+                </StackPanel>
+                <TextBlock x:Name="ApplyStatus" Grid.Column="1" VerticalAlignment="Center"
+                           Margin="8,0" FontSize="16"/>
+                <Button Grid.Column="2" x:Name="ApplyButton" Content="Apply"
+                        VerticalAlignment="Center" Click="Apply_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- Install service -->
+        <Border BorderBrush="#ddd" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="80"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock FontWeight="SemiBold" Text="2.  Install background service"/>
+                    <TextBlock FontSize="11" Foreground="#666" TextWrapping="Wrap"
+                               Text="Copies service EXE to Program Files and registers it with sc.exe."/>
+                </StackPanel>
+                <TextBlock x:Name="InstallStatus" Grid.Column="1" VerticalAlignment="Center"
+                           Margin="8,0" FontSize="16"/>
+                <Button Grid.Column="2" x:Name="InstallButton" Content="Install"
+                        VerticalAlignment="Center" Click="Install_Click"/>
+            </Grid>
+        </Border>
+
+        <TextBlock x:Name="DetailText" TextWrapping="Wrap" FontSize="11"
+                   Foreground="Gray" Margin="0,12,0,0"/>
+    </StackPanel>
+</UserControl>

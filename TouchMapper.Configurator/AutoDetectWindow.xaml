@@ -1,0 +1,35 @@
+<Window x:Class="TouchMapper.Configurator.AutoDetectWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        Topmost="True" ShowInTaskbar="False"
+        Background="#CC0D47A1">
+
+    <Grid>
+        <!-- Close hint -->
+        <TextBlock Text="ESC — cancel all  |  Space — skip this display"
+                   Foreground="#99ffffff" FontSize="11"
+                   HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,12,0"/>
+
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock x:Name="MonitorLabel" FontSize="22" FontWeight="Bold"
+                       Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+            <TextBlock x:Name="InstructionText"
+                       Text="Touch this screen."
+                       FontSize="36" FontWeight="SemiBold" Foreground="White"
+                       HorizontalAlignment="Center" Margin="0,0,0,24"
+                       TextWrapping="Wrap" TextAlignment="Center"/>
+
+            <TextBlock x:Name="SubText"
+                       Text="Press Space to skip this display."
+                       FontSize="14" Foreground="#aaffffff"
+                       HorizontalAlignment="Center"/>
+
+            <!-- Countdown -->
+            <TextBlock x:Name="CountdownText" Foreground="#99ffffff" FontSize="13"
+                       HorizontalAlignment="Center" Margin="0,24,0,0"/>
+        </StackPanel>
+    </Grid>
+</Window>

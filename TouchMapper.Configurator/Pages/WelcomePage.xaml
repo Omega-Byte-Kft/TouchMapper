@@ -1,0 +1,46 @@
+<UserControl x:Class="TouchMapper.Configurator.Pages.WelcomePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="32" VerticalAlignment="Center">
+        <TextBlock FontSize="22" FontWeight="Bold" Text="Welcome to TouchMapper" Margin="0,0,0,12"/>
+        <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#444" Margin="0,0,0,8">
+            Windows can lose touch-to-display associations after sleep or USB reconnect cycles.
+            TouchMapper detects your monitor topology once and corrects the mapping automatically.
+        </TextBlock>
+        <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="#444" Margin="0,0,0,24">
+            The wizard will:
+        </TextBlock>
+        <StackPanel Margin="16,0,0,0">
+            <TextBlock Text="1.  Scan for active monitors and touch devices" Margin="0,2"/>
+            <TextBlock Text="2.  Show the detected USB topology" Margin="0,2"/>
+            <TextBlock Text="3.  Let you name each monitor" Margin="0,2"/>
+            <TextBlock Text="4.  Apply the correct mapping and install the background service" Margin="0,2"/>
+        </StackPanel>
+        <Border Background="#FFF8E1" BorderBrush="#FFD54F" BorderThickness="1"
+                CornerRadius="3" Padding="10,8" Margin="0,16,0,0">
+            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#5D4037">
+                <Run FontWeight="SemiBold">Important:</Run>
+                Touch monitors must be USB daisy-chained — each monitor's USB output
+                connects to the next monitor's USB input. TouchMapper uses this chain
+                structure to reliably identify which touch input belongs to which display.
+            </TextBlock>
+        </Border>
+        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#888" Margin="0,12,0,0">
+            This tool requires administrator rights (already elevated via UAC).
+        </TextBlock>
+        <Button Content="Start Scan" HorizontalAlignment="Left" Margin="0,24,0,0"
+                Padding="20,8" FontSize="14"
+                Click="StartScan_Click"/>
+
+        <StackPanel Margin="0,32,0,0">
+            <Image Source="/Resources/omega-byte-logo.png"
+                   Height="28" HorizontalAlignment="Left" Margin="0,0,0,4"
+                   RenderOptions.BitmapScalingMode="HighQuality"/>
+            <TextBlock FontSize="11" Margin="0,2,0,0">
+                <Hyperlink NavigateUri="https://www.omegabyte.hu" RequestNavigate="Hyperlink_RequestNavigate">
+                    www.omegabyte.hu
+                </Hyperlink>
+            </TextBlock>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

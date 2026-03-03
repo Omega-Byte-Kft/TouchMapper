@@ -1,0 +1,41 @@
+<Window x:Class="TouchMapper.Configurator.TestOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        Topmost="True" ShowInTaskbar="False"
+        Background="#CC1565C0">
+
+    <Grid>
+        <!-- Close hint -->
+        <TextBlock Text="ESC — close" Foreground="#99ffffff" FontSize="11"
+                   HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,12,0"/>
+
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock x:Name="MonitorLabel" FontSize="22" FontWeight="Bold"
+                       Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+            <TextBlock x:Name="InstructionText"
+                       Text="Touch this screen to verify the binding."
+                       FontSize="32" FontWeight="SemiBold" Foreground="White"
+                       HorizontalAlignment="Center" Margin="0,0,0,24"
+                       TextWrapping="Wrap" TextAlignment="Center"/>
+
+            <!-- Applying progress -->
+            <StackPanel x:Name="ApplyingPanel" HorizontalAlignment="Center">
+                <ProgressBar IsIndeterminate="True" Width="260" Height="6" Margin="0,0,0,10"/>
+                <TextBlock Text="Applying mapping, please wait…" Foreground="#ccffffff"
+                           FontSize="14" HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Result (hidden until touch) -->
+            <TextBlock x:Name="ResultText" FontSize="48" FontWeight="Bold"
+                       HorizontalAlignment="Center" Foreground="White"
+                       Visibility="Collapsed"/>
+
+            <!-- Countdown -->
+            <TextBlock x:Name="CountdownText" Foreground="#99ffffff" FontSize="13"
+                       HorizontalAlignment="Center" Margin="0,24,0,0"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# User secrets
+appsettings.Development.json
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store

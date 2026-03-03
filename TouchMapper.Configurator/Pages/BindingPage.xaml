@@ -1,0 +1,51 @@
+<UserControl x:Class="TouchMapper.Configurator.Pages.BindingPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="24,16,24,8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock TextWrapping="Wrap" Foreground="#444" Margin="0,0,0,8" FontSize="12">
+                Assign each detected touch input path to the monitor it physically controls.
+                Devices marked ★ have fewer USB hops and act as the anchor of their chain.
+                Use the Test button to confirm, or Auto-Detect to walk through all displays.
+            </TextBlock>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <Button x:Name="AutoDetectButton" Content="Auto-Detect Bindings"
+                        Click="AutoDetect_Click" Padding="16,6" />
+                <Button x:Name="TouchMonitorButton" Content="Debug Touch"
+                        Click="TouchMonitor_Click" Margin="8,0,0,0" Padding="16,6" />
+            </StackPanel>
+            <Border x:Name="TouchMonitorPanel" Visibility="Collapsed"
+                    Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1"
+                    CornerRadius="3" Padding="8,6" Margin="0,4,0,0">
+                <StackPanel>
+                    <TextBlock FontSize="11" Foreground="#666" IsHitTestVisible="False">
+                        Last touched HID device (touch any screen):
+                    </TextBlock>
+                    <TextBox x:Name="LastTouchDeviceText"
+                             FontFamily="Consolas" FontSize="11" Foreground="#222"
+                             TextWrapping="Wrap" Text="Waiting for touch..."
+                             IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                             Margin="0,2,0,0"/>
+                    <TextBox x:Name="LastTouchUsbPathText"
+                             FontFamily="Consolas" FontSize="11" Foreground="#555"
+                             TextWrapping="Wrap" Text=""
+                             IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                             Margin="0,2,0,0"/>
+                    <TextBox x:Name="LastTouchMatchText"
+                             FontSize="11" Foreground="Gray"
+                             IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                             Margin="0,2,0,0"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="BindingList"/>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

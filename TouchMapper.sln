@@ -1,0 +1,62 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchMapper.Core", "TouchMapper.Core\TouchMapper.Core.csproj", "{8E63AB77-8895-4717-921F-00E91464907C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchMapper.Configurator", "TouchMapper.Configurator\TouchMapper.Configurator.csproj", "{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouchMapper.Service", "TouchMapper.Service\TouchMapper.Service.csproj", "{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8E63AB77-8895-4717-921F-00E91464907C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Debug|x64.Build.0 = Debug|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Debug|x86.Build.0 = Debug|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Release|x64.ActiveCfg = Release|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Release|x64.Build.0 = Release|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Release|x86.ActiveCfg = Release|Any CPU
+		{8E63AB77-8895-4717-921F-00E91464907C}.Release|x86.Build.0 = Release|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Debug|x64.Build.0 = Debug|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Debug|x86.Build.0 = Debug|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Release|x64.ActiveCfg = Release|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Release|x64.Build.0 = Release|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Release|x86.ActiveCfg = Release|Any CPU
+		{5B706BD6-7383-4FD2-BE51-8B28B92EA4C7}.Release|x86.Build.0 = Release|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Debug|x64.Build.0 = Debug|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Debug|x86.Build.0 = Debug|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Release|x64.ActiveCfg = Release|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Release|x64.Build.0 = Release|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Release|x86.ActiveCfg = Release|Any CPU
+		{3C71D0B7-9508-4CA5-B69B-7E6551BF0833}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
