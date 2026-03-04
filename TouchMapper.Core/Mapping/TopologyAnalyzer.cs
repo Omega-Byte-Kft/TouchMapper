@@ -60,11 +60,14 @@ public static class TopologyAnalyzer
             commonDepth++;
         }
 
-        // Require at least one common USB hub segment (not just PCI root + bridge)
-        // and the paths must diverge (they're different devices, different lengths)
-        var segsCommon = segsA.Take(commonDepth);
-        var hasSharedUsbHub = segsCommon.Any(s => s.StartsWith("USB(", StringComparison.OrdinalIgnoreCase));
-        return hasSharedUsbHub && segsA.Length != segsB.Length;
+        // Count USB hub segments in the common prefix (excluding USBROOT)
+        // Require at least 2 common USB segments to consider devices as chained.
+        // A single shared USB(x) just means "same root hub port" which is too broad
+        // (e.g., a drawing tablet and touch monitors on the same USB controller).
+        var usbSegCount = segsA.Take(commonDepth)
+            .Count(s => s.StartsWith("USB(", StringComparison.OrdinalIgnoreCase)
+                     && !s.StartsWith("USBROOT(", StringComparison.OrdinalIgnoreCase));
+        return usbSegCount >= 2 && segsA.Length != segsB.Length;
     }
 
     private static int Find(int[] parent, int i)
