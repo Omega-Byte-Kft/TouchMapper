@@ -1,0 +1,16 @@
+<Window x:Class="TouchMapper.Configurator.BlockingOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        Topmost="True" ShowInTaskbar="False"
+        Background="#CC333333">
+
+    <Grid>
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock Text="Do not touch this screen."
+                       FontSize="28" FontWeight="SemiBold" Foreground="#88ffffff"
+                       HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</Window>

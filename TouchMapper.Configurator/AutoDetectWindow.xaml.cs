@@ -24,6 +24,7 @@ public partial class AutoDetectWindow : Window
     private int _secondsLeft = 30;
     private bool _resultFired;
     private HwndSource? _hwndSource;
+    private readonly List<BlockingOverlayWindow> _blockingOverlays = [];
 
     private static void Log(string msg)
     {
@@ -96,6 +97,9 @@ public partial class AutoDetectWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        // Show blocking overlays on all non-target monitors
+        ShowBlockingOverlays();
+
         var hwnd = new WindowInteropHelper(this).Handle;
 
         RegisterDigitizerUsage(hwnd, 0x04); // Touch Screen
@@ -274,10 +278,33 @@ public partial class AutoDetectWindow : Window
         }
     }
 
+    private void ShowBlockingOverlays()
+    {
+        foreach (var bounds in ScreenHelper.GetAllScreenBounds())
+        {
+            if (bounds.IntersectsWith(_screenBounds)
+                && bounds.Width == _screenBounds.Width
+                && bounds.Height == _screenBounds.Height)
+                continue;
+
+            var overlay = new BlockingOverlayWindow(bounds);
+            _blockingOverlays.Add(overlay);
+            overlay.Show();
+        }
+    }
+
+    private void CloseBlockingOverlays()
+    {
+        foreach (var overlay in _blockingOverlays)
+            overlay.Close();
+        _blockingOverlays.Clear();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _countdown.Stop();
         _hwndSource?.RemoveHook(WndProc);
+        CloseBlockingOverlays();
         Log("AutoDetect window closed");
         base.OnClosed(e);
     }

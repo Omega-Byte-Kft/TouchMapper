@@ -18,12 +18,8 @@ public partial class MainWindow : Window
         [
             ("Welcome", "Touch-to-display mapping configurator",
                 () => new WelcomePage(OnScanReady)),
-            ("Scanning", "Detecting monitors and touch devices",
-                () => new ScanPage(_state, OnScanComplete)),
             ("Assign Bindings", "Bind each touch path to its display",
                 () => new BindingPage(_state, OnBindingChanged)),
-            ("Name Monitors", "Give each monitor a friendly name",
-                () => new NamingPage(_state, OnNamingDone)),
             ("Apply & Install", "Apply mapping and install background service",
                 () => new ApplyPage(_state)),
         ];
@@ -48,19 +44,9 @@ public partial class MainWindow : Window
 
     private void OnScanReady() => NavigateTo(1);
 
-    private void OnScanComplete(bool success)
-    {
-        NextButton.IsEnabled = success;
-    }
-
     private void OnBindingChanged(bool allAssigned)
     {
         NextButton.IsEnabled = allAssigned;
-    }
-
-    private void OnNamingDone()
-    {
-        NextButton.IsEnabled = true;
     }
 
     private void BackButton_Click(object sender, RoutedEventArgs e)

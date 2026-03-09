@@ -14,8 +14,10 @@
                 Use the Test button to confirm, or Auto-Detect to walk through all displays.
             </TextBlock>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                <Button x:Name="RescanButton" Content="Re-scan Topology"
+                        Click="Rescan_Click" Padding="16,6" />
                 <Button x:Name="AutoDetectButton" Content="Auto-Detect Bindings"
-                        Click="AutoDetect_Click" Padding="16,6" />
+                        Click="AutoDetect_Click" Margin="8,0,0,0" Padding="16,6" />
                 <Button x:Name="TouchMonitorButton" Content="Debug Touch"
                         Click="TouchMonitor_Click" Margin="8,0,0,0" Padding="16,6" />
             </StackPanel>

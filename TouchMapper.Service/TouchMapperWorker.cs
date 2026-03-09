@@ -126,16 +126,9 @@ public sealed class TouchMapperWorker : BackgroundService
                 return;
             }
 
-            FileLog($"Config loaded: SchemaVersion={config.SchemaVersion} " +
-                    $"TopologyGroups={config.TopologyGroups.Count} DirectMappings={config.DirectMappings.Count}");
-            foreach (var g in config.TopologyGroups)
-            {
-                FileLog($"  TopologyGroup: anchor={g.AnchorEdidSerial} ({g.AnchorFriendlyName}), children={g.Children.Count}");
-                foreach (var c in g.Children)
-                    FileLog($"    Child: {c.EdidSerial} ({c.FriendlyName})");
-            }
-            foreach (var dm in config.DirectMappings)
-                FileLog($"  DirectMapping: usb={dm.UsbLocationPath} monitor={dm.MonitorEdidSerial} ({dm.MonitorFriendlyName})");
+            FileLog($"Config loaded: SchemaVersion={config.SchemaVersion} Mappings={config.Mappings.Count}");
+            foreach (var m in config.Mappings)
+                FileLog($"  Mapping: usbId={m.UsbIdentifier} monitor={m.MonitorEdidSerial} ({m.MonitorFriendlyName})");
 
             var monitors = EdidDetector.GetActiveMonitors();
             var touches = TouchDetector.GetActiveTouchDevices();

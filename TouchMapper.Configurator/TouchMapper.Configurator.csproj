@@ -19,6 +19,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\app.ico</ApplicationIcon>
     <Company>Omega Byte Kft.</Company>
     <Product>TouchMapper</Product>
     <Description>Touch-to-display mapping configurator</Description>

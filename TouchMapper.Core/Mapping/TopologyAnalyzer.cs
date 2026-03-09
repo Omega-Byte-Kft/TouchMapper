@@ -70,6 +70,58 @@ public static class TopologyAnalyzer
         return usbSegCount >= 2 && segsA.Length != segsB.Length;
     }
 
+    /// <summary>
+    /// Computes a unique USB identifier for each touch device.
+    /// For grouped devices: the unique suffix after the common prefix (divergence point).
+    /// For standalone devices: the full USB location path.
+    /// </summary>
+    public static Dictionary<TouchDeviceInfo, string> ComputeIdentifiers(List<TouchDeviceInfo> devices)
+    {
+        var result = new Dictionary<TouchDeviceInfo, string>();
+        var groups = GroupByAncestor(devices);
+
+        foreach (var group in groups)
+        {
+            if (group.Count == 1)
+            {
+                // Standalone: full path is the identifier
+                result[group[0]] = group[0].UsbLocationPath;
+            }
+            else
+            {
+                // Grouped: identifier = segments after common prefix
+                var paths = group.Select(d => d.UsbLocationPath.Split('#')).ToList();
+                int commonLen = CommonPrefixLength(paths);
+
+                foreach (var device in group)
+                {
+                    var segs = device.UsbLocationPath.Split('#');
+                    result[device] = string.Join('#', segs.Skip(commonLen));
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Returns the number of leading segments shared by all arrays.
+    /// </summary>
+    public static int CommonPrefixLength(List<string[]> segmentArrays)
+    {
+        if (segmentArrays.Count == 0) return 0;
+        int minLen = segmentArrays.Min(s => s.Length);
+        int common = 0;
+        for (int i = 0; i < minLen; i++)
+        {
+            if (segmentArrays.All(s => string.Equals(s[i], segmentArrays[0][i], StringComparison.OrdinalIgnoreCase)))
+                common++;
+            else
+                break;
+        }
+        return common;
+    }
+
     private static int Find(int[] parent, int i)
     {
         while (parent[i] != i)

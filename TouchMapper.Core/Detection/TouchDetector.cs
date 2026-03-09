@@ -65,26 +65,19 @@ public static class TouchDetector
 
     private static bool IsTouchDevice(RegistryKey instKey)
     {
-        // HardwareID is a REG_MULTI_SZ. Touch screens include "HID_DEVICE_UP:000D_U:0004"
-        // (HID Usage Page 0x0D = Digitizers, Usage 0x04 = Touch Screen)
+        // HardwareID is a REG_MULTI_SZ.
+        // Match only Touch Screen: HID Usage Page 0x0D (Digitizers), Usage 0x04 (Touch Screen).
+        // This excludes pen/stylus (0x02), touch pad (0x05), device config (0x0E), etc.
         if (instKey.GetValue("HardwareID") is string[] hwIds)
         {
             foreach (var id in hwIds)
             {
-                if (id.Contains("UP:000D", StringComparison.OrdinalIgnoreCase) ||
-                    id.Contains("touch",   StringComparison.OrdinalIgnoreCase))
+                if (id.Contains("UP:000D_U:0004", StringComparison.OrdinalIgnoreCase))
                     return true;
             }
         }
 
-        // Fallback: description string
-        var desc = instKey.GetValue("DeviceDesc") as string ?? string.Empty;
-        // DeviceDesc is sometimes "@oem.inf,%strkey%;Friendly Name" — strip the prefix
-        var semicolon = desc.LastIndexOf(';');
-        if (semicolon >= 0) desc = desc[(semicolon + 1)..];
-
-        return desc.Contains("touch",     StringComparison.OrdinalIgnoreCase) ||
-               desc.Contains("digitizer", StringComparison.OrdinalIgnoreCase);
+        return false;
     }
 
     /// <summary>

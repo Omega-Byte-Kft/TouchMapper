@@ -27,6 +27,7 @@ public partial class TestOverlayWindow : Window
     private IntPtr _mouseHook;
     private NativeMethods.LowLevelMouseProc? _mouseHookDelegate;
     private Dictionary<string, string>? _originalMappings;
+    private readonly List<BlockingOverlayWindow> _blockingOverlays = [];
 
     private static void Log(string msg)
     {
@@ -79,6 +80,9 @@ public partial class TestOverlayWindow : Window
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        // Show blocking overlays on all non-target monitors
+        ShowBlockingOverlays();
+
         // Save current mappings before overwriting, then apply test mappings
         try
         {
@@ -188,10 +192,34 @@ public partial class TestOverlayWindow : Window
         }
     }
 
+    private void ShowBlockingOverlays()
+    {
+        foreach (var bounds in ScreenHelper.GetAllScreenBounds())
+        {
+            // Skip the target monitor's screen
+            if (bounds.IntersectsWith(_screenBounds)
+                && bounds.Width == _screenBounds.Width
+                && bounds.Height == _screenBounds.Height)
+                continue;
+
+            var overlay = new BlockingOverlayWindow(bounds);
+            _blockingOverlays.Add(overlay);
+            overlay.Show();
+        }
+    }
+
+    private void CloseBlockingOverlays()
+    {
+        foreach (var overlay in _blockingOverlays)
+            overlay.Close();
+        _blockingOverlays.Clear();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         RemoveMouseHook();
         _countdown.Stop();
+        CloseBlockingOverlays();
 
         // Fire-and-forget restore so the window closes immediately
         if (_originalMappings is { } snapshot)

@@ -11,6 +11,37 @@ public static class ScreenHelper
     private const uint ENUM_CURRENT_SETTINGS = unchecked((uint)-1);
 
     /// <summary>
+    /// Returns the screen bounds for every active display adapter.
+    /// </summary>
+    public static List<Rectangle> GetAllScreenBounds()
+    {
+        var result = new List<Rectangle>();
+        var dd = new DISPLAY_DEVICE { cb = (uint)Marshal.SizeOf<DISPLAY_DEVICE>() };
+
+        for (uint ai = 0; EnumDisplayDevices(null, ai, ref dd, 0); ai++)
+        {
+            // Only active adapters
+            if ((dd.StateFlags & 0x00000001) == 0) // DISPLAY_DEVICE_ATTACHED_TO_DESKTOP
+            {
+                dd.cb = (uint)Marshal.SizeOf<DISPLAY_DEVICE>();
+                continue;
+            }
+
+            var dm = new DEVMODE { dmSize = (ushort)Marshal.SizeOf<DEVMODE>() };
+            if (EnumDisplaySettingsEx(dd.DeviceName, ENUM_CURRENT_SETTINGS, ref dm, 0))
+            {
+                result.Add(new Rectangle(
+                    dm.dmPositionX, dm.dmPositionY,
+                    (int)dm.dmPelsWidth, (int)dm.dmPelsHeight));
+            }
+
+            dd.cb = (uint)Marshal.SizeOf<DISPLAY_DEVICE>();
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Returns the physical screen rectangle (in pixels) for the given monitor,
     /// or null if no match is found.
     /// </summary>

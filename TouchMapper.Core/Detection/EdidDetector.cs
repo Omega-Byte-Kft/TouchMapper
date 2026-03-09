@@ -31,6 +31,9 @@ public static class EdidDetector
             var serialBytes = obj["SerialNumberID"] as ushort[];
             var edidSerial = DecodeEdidString(serialBytes);
 
+            var friendlyBytes = obj["UserFriendlyName"] as ushort[];
+            var userFriendlyName = DecodeEdidString(friendlyBytes);
+
             // Extract monitor model from instance path segment
             var parts = cleanInstance.Split('\\');
             var monitorModel = parts.Length >= 2 ? parts[1] : cleanInstance;
@@ -49,6 +52,7 @@ public static class EdidDetector
                     InstanceName = cleanInstance,
                     EdidSerial = edidSerial,
                     MonitorModel = monitorModel,
+                    UserFriendlyName = userFriendlyName,
                     DisplayDevicePath = displayPath,
                     IsInternal = isInternal
                 });

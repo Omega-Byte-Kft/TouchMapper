@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using TouchMapper.Core.Detection;
 using TouchMapper.Core.Models;
 using TouchMapper.Core.Mapping;
 
@@ -16,8 +17,9 @@ public partial class BindingPage : UserControl
 
     // One entry per touch device (all groups flattened + standalone)
     private readonly List<RowHandle> _rows = [];
+    private Dictionary<TouchDeviceInfo, string> _identifiers = new();
 
-    private sealed record RowHandle(TouchDeviceInfo Touch, bool IsAnchor, bool IsStandalone, ComboBox MonitorCombo);
+    private sealed record RowHandle(TouchDeviceInfo Touch, ComboBox MonitorCombo);
 
     public BindingPage(WizardState state, Action<bool> onChanged)
     {
@@ -27,7 +29,122 @@ public partial class BindingPage : UserControl
         Loaded += BindingPage_Loaded;
     }
 
-    private void BindingPage_Loaded(object sender, RoutedEventArgs e)
+    private async void BindingPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_state.TouchDevices.Count == 0)
+            await RunScanAsync();
+
+        RebuildUI();
+    }
+
+    private async Task RunScanAsync()
+    {
+        _rows.Clear();
+        BindingList.Children.Clear();
+
+        var scanning = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+        var progress = new ProgressBar { IsIndeterminate = true, Height = 4, Margin = new Thickness(0, 0, 0, 8) };
+        var statusText = new TextBlock { Text = "Scanning for monitors and touch devices...", FontSize = 12 };
+        scanning.Children.Add(progress);
+        scanning.Children.Add(statusText);
+        BindingList.Children.Add(scanning);
+
+        RescanButton.IsEnabled = false;
+        AutoDetectButton.IsEnabled = false;
+
+        try
+        {
+            statusText.Text = "Querying WMI for active monitors...";
+            var monitors = await Task.Run(() => EdidDetector.GetActiveMonitors());
+            _state.Monitors = monitors;
+
+            statusText.Text = "Querying PnP for touch devices...";
+            var touches = await Task.Run(() => TouchDetector.GetActiveTouchDevices());
+            _state.TouchDevices = touches;
+
+            statusText.Text = "Analysing USB topology...";
+            var allGroups = await Task.Run(() => TopologyAnalyzer.GroupByAncestor(touches));
+
+            var chainedGroups = allGroups.Where(g => g.Count >= 2).ToList();
+            var standaloneDevices = allGroups
+                .Where(g => g.Count == 1)
+                .Select(g => g[0])
+                .ToList();
+
+            var groupedDevices = allGroups.SelectMany(g => g).ToHashSet();
+            foreach (var t in touches)
+            {
+                if (!groupedDevices.Contains(t))
+                    standaloneDevices.Add(t);
+            }
+
+            _state.LiveTouchGroups = chainedGroups;
+            _state.StandaloneTouchDevices = standaloneDevices;
+
+            BuildDefaultConfig(monitors, chainedGroups, standaloneDevices);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Scan failed: {ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            RescanButton.IsEnabled = true;
+            AutoDetectButton.IsEnabled = true;
+        }
+    }
+
+    private void BuildDefaultConfig(
+        List<MonitorInfo> monitors,
+        List<List<TouchDeviceInfo>> chainedGroups,
+        List<TouchDeviceInfo> standaloneDevices)
+    {
+        var config = new TouchMapperConfig();
+        var externalMonitors = monitors.Where(m => !m.IsInternal).ToList();
+        int monitorIdx = 0;
+
+        var allDevices = chainedGroups.SelectMany(g => g).Concat(standaloneDevices).ToList();
+        var identifiers = TopologyAnalyzer.ComputeIdentifiers(allDevices);
+
+        // Assign external monitors to chained groups first (in hop order)
+        foreach (var group in chainedGroups)
+        {
+            foreach (var device in group)
+            {
+                if (monitorIdx >= externalMonitors.Count) break;
+                if (!identifiers.TryGetValue(device, out var id)) continue;
+                config.Mappings.Add(new TouchMapping
+                {
+                    UsbIdentifier = id,
+                    MonitorEdidSerial = externalMonitors[monitorIdx].EdidSerial,
+                    MonitorFriendlyName = externalMonitors[monitorIdx].DisplayLabel
+                });
+                monitorIdx++;
+            }
+        }
+
+        // Remaining monitors to standalone devices
+        var remainingMonitors = monitors
+            .Where(m => !externalMonitors.Take(monitorIdx).Contains(m))
+            .ToList();
+
+        for (int i = 0; i < standaloneDevices.Count; i++)
+        {
+            if (i >= remainingMonitors.Count) break;
+            if (!identifiers.TryGetValue(standaloneDevices[i], out var id)) continue;
+            config.Mappings.Add(new TouchMapping
+            {
+                UsbIdentifier = id,
+                MonitorEdidSerial = remainingMonitors[i].EdidSerial,
+                MonitorFriendlyName = remainingMonitors[i].DisplayLabel
+            });
+        }
+
+        _state.Config = config;
+    }
+
+    private void RebuildUI()
     {
         _rows.Clear();
         BindingList.Children.Clear();
@@ -40,11 +157,16 @@ public partial class BindingPage : UserControl
         {
             BindingList.Children.Add(new TextBlock
             {
-                Text = "No touch devices found. Go back and re-run the scan.",
+                Text = "No touch devices found. Use Re-scan Topology to retry.",
                 Foreground = Brushes.Red, Margin = new Thickness(0, 8, 0, 0)
             });
             return;
         }
+
+        // Compute identifiers for all devices
+        var allDevices = _state.LiveTouchGroups.SelectMany(g => g)
+            .Concat(_state.StandaloneTouchDevices).ToList();
+        _identifiers = TopologyAnalyzer.ComputeIdentifiers(allDevices);
 
         // --- Chained Devices section ---
         if (hasChained)
@@ -60,28 +182,7 @@ public partial class BindingPage : UserControl
             for (var gi = 0; gi < _state.LiveTouchGroups.Count; gi++)
             {
                 var group = _state.LiveTouchGroups[gi];
-
-                var header = new TextBlock
-                {
-                    Text = $"── Group {gi + 1} " + new string('─', 60),
-                    Foreground = Brushes.Gray,
-                    FontSize = 11,
-                    Margin = new Thickness(0, gi == 0 ? 0 : 10, 0, 4)
-                };
-                BindingList.Children.Add(header);
-
-                for (var di = 0; di < group.Count; di++)
-                {
-                    var touch = group[di];
-                    bool isAnchor = di == 0;
-
-                    MonitorInfo? preSelected = FindPreSelectedChained(gi, di, allMonitors);
-                    var combo = BuildComboBox(allMonitors, preSelected);
-                    var row = new RowHandle(touch, isAnchor, IsStandalone: false, combo);
-                    _rows.Add(row);
-
-                    BindingList.Children.Add(BuildRow(row, touch, isAnchor, combo));
-                }
+                BindingList.Children.Add(BuildGroupTreePanel(group, gi, allMonitors));
             }
         }
 
@@ -96,13 +197,11 @@ public partial class BindingPage : UserControl
                 Margin = new Thickness(0, hasChained ? 16 : 0, 0, 6)
             });
 
-            for (var i = 0; i < _state.StandaloneTouchDevices.Count; i++)
+            foreach (var touch in _state.StandaloneTouchDevices)
             {
-                var touch = _state.StandaloneTouchDevices[i];
-
-                MonitorInfo? preSelected = FindPreSelectedStandalone(i, allMonitors);
+                MonitorInfo? preSelected = FindPreSelected(touch, allMonitors);
                 var combo = BuildComboBox(allMonitors, preSelected);
-                var row = new RowHandle(touch, IsAnchor: false, IsStandalone: true, combo);
+                var row = new RowHandle(touch, combo);
                 _rows.Add(row);
 
                 BindingList.Children.Add(BuildStandaloneRow(row, touch, combo));
@@ -112,29 +211,17 @@ public partial class BindingPage : UserControl
         UpdateConfig();
     }
 
-    private MonitorInfo? FindPreSelectedChained(int groupIdx, int slotIdx, List<MonitorInfo> monitors)
+    private MonitorInfo? FindPreSelected(TouchDeviceInfo touch, List<MonitorInfo> monitors)
     {
-        if (groupIdx >= _state.Config.TopologyGroups.Count) return null;
-        var cfgGroup = _state.Config.TopologyGroups[groupIdx];
+        if (!_identifiers.TryGetValue(touch, out var identifier)) return null;
 
-        string? edid = slotIdx == 0
-            ? cfgGroup.AnchorEdidSerial
-            : slotIdx - 1 < cfgGroup.Children.Count
-                ? cfgGroup.Children[slotIdx - 1].EdidSerial
-                : null;
+        var mapping = _state.Config.Mappings.FirstOrDefault(m =>
+            string.Equals(m.UsbIdentifier, identifier, StringComparison.OrdinalIgnoreCase));
 
-        return edid is null ? null
-            : monitors.FirstOrDefault(m =>
-                string.Equals(m.EdidSerial, edid, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private MonitorInfo? FindPreSelectedStandalone(int index, List<MonitorInfo> monitors)
-    {
-        if (index >= _state.Config.DirectMappings.Count) return null;
-        var dm = _state.Config.DirectMappings[index];
+        if (mapping is null) return null;
 
         return monitors.FirstOrDefault(m =>
-            string.Equals(m.EdidSerial, dm.MonitorEdidSerial, StringComparison.OrdinalIgnoreCase));
+            string.Equals(m.EdidSerial, mapping.MonitorEdidSerial, StringComparison.OrdinalIgnoreCase));
     }
 
     private ComboBox BuildComboBox(List<MonitorInfo> monitors, MonitorInfo? preSelected)
@@ -155,23 +242,89 @@ public partial class BindingPage : UserControl
         return combo;
     }
 
-    private UIElement BuildRow(RowHandle row, TouchDeviceInfo touch, bool isAnchor, ComboBox combo)
+    private UIElement BuildGroupTreePanel(List<TouchDeviceInfo> group, int groupIndex, List<MonitorInfo> allMonitors)
     {
-        var border = new Border
+        var outerBorder = new Border
         {
-            BorderBrush = isAnchor ? Brushes.CornflowerBlue : Brushes.LightGray,
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0x64, 0x95, 0xED)),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(3),
-            Padding = new Thickness(10, 8, 10, 8),
-            Margin = new Thickness(0, 0, 0, 4)
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(14, 10, 14, 10),
+            Margin = new Thickness(0, groupIndex == 0 ? 0 : 10, 0, 0),
+            Background = new SolidColorBrush(Color.FromRgb(0xFA, 0xFB, 0xFF))
         };
 
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var mainStack = new StackPanel();
+
+        mainStack.Children.Add(new TextBlock
+        {
+            Text = $"Group {groupIndex + 1}",
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 8)
+        });
+
+        // Parse paths and find common prefix (the identifier)
+        var allSegments = group.Select(d => d.UsbLocationPath.Split('#')).ToList();
+        int commonLen = TopologyAnalyzer.CommonPrefixLength(allSegments);
+        var commonSegs = allSegments[0].Take(commonLen).ToArray();
+
+        // Common chain visualization (dim — not the identifier)
+        mainStack.Children.Add(new TextBlock
+        {
+            Text = "Common path:",
+            FontSize = 10,
+            Foreground = Brushes.Gray,
+            Margin = new Thickness(0, 0, 0, 4)
+        });
+        mainStack.Children.Add(BuildSegmentChain(commonSegs, highlight: false));
+
+        // Device branches — diverge from the last common node
+        for (int di = 0; di < group.Count; di++)
+        {
+            var touch = group[di];
+            bool isAnchor = di == 0;
+            bool isLast = di == group.Count - 1;
+            var uniqueSegs = allSegments[di].Skip(commonLen).ToArray();
+
+            MonitorInfo? preSelected = FindPreSelected(touch, allMonitors);
+            var combo = BuildComboBox(allMonitors, preSelected);
+            var row = new RowHandle(touch, combo);
+            _rows.Add(row);
+
+            mainStack.Children.Add(BuildBranchRow(row, touch, isAnchor, isLast, uniqueSegs, combo));
+        }
+
+        outerBorder.Child = mainStack;
+        return outerBorder;
+    }
+
+    private UIElement BuildBranchRow(RowHandle row, TouchDeviceInfo touch, bool isAnchor, bool isLast, string[] uniqueSegments, ComboBox combo)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 1, 0, 1) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // tree connector
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // unique segments
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // icon
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // label
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // arrow
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // combo
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // test
+
+        var connector = new TextBlock
+        {
+            Text = isLast ? " └─ " : " ├─ ",
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 13,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x64, 0x95, 0xED)),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 0, 0)
+        };
+        Grid.SetColumn(connector, 0);
+
+        var uniqueChain = BuildSegmentChain(uniqueSegments, highlight: true);
+        uniqueChain.VerticalAlignment = VerticalAlignment.Center;
+        uniqueChain.Margin = new Thickness(0, 0, 6, 0);
+        Grid.SetColumn(uniqueChain, 1);
 
         var icon = new TextBlock
         {
@@ -179,51 +332,54 @@ public partial class BindingPage : UserControl
             FontSize = isAnchor ? 14 : 18,
             Foreground = isAnchor ? Brushes.CornflowerBlue : Brushes.Gray,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 4, 0)
+            Margin = new Thickness(2, 0, 4, 0)
         };
-        Grid.SetColumn(icon, 0);
+        Grid.SetColumn(icon, 2);
 
-        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        info.Children.Add(new TextBlock
+        var label = new TextBlock
         {
             Text = isAnchor
-                ? $"Touch Device  (anchor, {touch.HopCount} hops)"
-                : $"Touch Device  ({touch.HopCount} hops, via anchor hub)",
+                ? $"anchor ({touch.HopCount} hops)"
+                : $"child ({touch.HopCount} hops)",
             FontWeight = isAnchor ? FontWeights.SemiBold : FontWeights.Normal,
-            FontSize = 12
-        });
-        info.Children.Add(BuildPathBlock(touch.UsbLocationPath));
-        Grid.SetColumn(info, 1);
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0)
+        };
+        Grid.SetColumn(label, 3);
 
         var arrow = new TextBlock
         {
             Text = "→",
-            FontSize = 16,
+            FontSize = 14,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(10, 0, 10, 0),
+            Margin = new Thickness(4, 0, 6, 0),
             Foreground = Brushes.Gray
         };
-        Grid.SetColumn(arrow, 2);
+        Grid.SetColumn(arrow, 4);
 
-        Grid.SetColumn(combo, 3);
+        combo.MinWidth = 180;
+        combo.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(combo, 5);
 
         var testBtn = new Button
         {
             Content = "Test",
-            Margin = new Thickness(10, 0, 0, 0),
-            Padding = new Thickness(12, 4, 12, 4),
+            Margin = new Thickness(8, 0, 0, 0),
+            Padding = new Thickness(10, 3, 10, 3),
             VerticalAlignment = VerticalAlignment.Center
         };
         testBtn.Click += (_, _) => TestBinding(row);
-        Grid.SetColumn(testBtn, 4);
+        Grid.SetColumn(testBtn, 6);
 
+        grid.Children.Add(connector);
+        grid.Children.Add(uniqueChain);
         grid.Children.Add(icon);
-        grid.Children.Add(info);
+        grid.Children.Add(label);
         grid.Children.Add(arrow);
         grid.Children.Add(combo);
         grid.Children.Add(testBtn);
-        border.Child = grid;
-        return border;
+        return grid;
     }
 
     private UIElement BuildStandaloneRow(RowHandle row, TouchDeviceInfo touch, ComboBox combo)
@@ -232,17 +388,32 @@ public partial class BindingPage : UserControl
         {
             BorderBrush = Brushes.DarkSeaGreen,
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(3),
-            Padding = new Thickness(10, 8, 10, 8),
-            Margin = new Thickness(0, 0, 0, 4)
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 0, 6),
+            Background = new SolidColorBrush(Color.FromRgb(0xFA, 0xFF, 0xFA))
         };
 
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var stack = new StackPanel();
+
+        // USB chain visualization (full path, highlighted — this is the stored identifier)
+        stack.Children.Add(new TextBlock
+        {
+            Text = "USB path identifier:",
+            FontSize = 10,
+            Foreground = Brushes.Gray,
+            Margin = new Thickness(0, 0, 0, 3)
+        });
+        var segments = touch.UsbLocationPath.Split('#');
+        stack.Children.Add(BuildSegmentChain(segments, highlight: true));
+
+        // Device row: icon + label + arrow + combo + test
+        var grid = new Grid { Margin = new Thickness(0, 6, 0, 0) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // icon
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // label
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // arrow
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // combo
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // test
 
         var icon = new TextBlock
         {
@@ -250,72 +421,139 @@ public partial class BindingPage : UserControl
             FontSize = 12,
             Foreground = Brushes.DarkSeaGreen,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 4, 0)
+            Margin = new Thickness(0, 0, 6, 0)
         };
         Grid.SetColumn(icon, 0);
 
-        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        info.Children.Add(new TextBlock
+        var label = new TextBlock
         {
             Text = $"Touch Device  (standalone, {touch.HopCount} hops)",
-            FontWeight = FontWeights.Normal,
-            FontSize = 12
-        });
-        info.Children.Add(BuildPathBlock(touch.UsbLocationPath));
-        Grid.SetColumn(info, 1);
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(label, 1);
 
         var arrow = new TextBlock
         {
             Text = "→",
-            FontSize = 16,
+            FontSize = 14,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(10, 0, 10, 0),
+            Margin = new Thickness(8, 0, 8, 0),
             Foreground = Brushes.Gray
         };
         Grid.SetColumn(arrow, 2);
 
+        combo.MinWidth = 180;
+        combo.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(combo, 3);
 
         var testBtn = new Button
         {
             Content = "Test",
-            Margin = new Thickness(10, 0, 0, 0),
-            Padding = new Thickness(12, 4, 12, 4),
+            Margin = new Thickness(8, 0, 0, 0),
+            Padding = new Thickness(10, 3, 10, 3),
             VerticalAlignment = VerticalAlignment.Center
         };
         testBtn.Click += (_, _) => TestBinding(row);
         Grid.SetColumn(testBtn, 4);
 
         grid.Children.Add(icon);
-        grid.Children.Add(info);
+        grid.Children.Add(label);
         grid.Children.Add(arrow);
         grid.Children.Add(combo);
         grid.Children.Add(testBtn);
-        border.Child = grid;
+
+        stack.Children.Add(grid);
+        border.Child = stack;
         return border;
     }
 
-    /// <summary>
-    /// Builds a right-aligned path TextBlock inside a clipping container,
-    /// so the left (less-important) part is trimmed when space is tight.
-    /// </summary>
-    private static UIElement BuildPathBlock(string path)
-    {
-        var tb = new TextBlock
-        {
-            Text = path,
-            FontFamily = new FontFamily("Consolas"),
-            FontSize = 10,
-            Foreground = Brushes.Gray,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            TextWrapping = TextWrapping.NoWrap
-        };
 
-        return new Border
+    /// <summary>
+    /// Formats a path segment for display. The segment name becomes the node type,
+    /// and the parenthetical shows contextual info (port number, bus, interface, etc.).
+    /// "USB(2)" → "USB (port 2)", "PCI(1400)" → "PCI (0x1400)", etc.
+    /// </summary>
+    private static string FormatSegmentLabel(string segment)
+    {
+        int parenStart = segment.IndexOf('(');
+        if (parenStart < 0 || !segment.EndsWith(')'))
+            return segment;
+
+        string type = segment[..parenStart];
+        string value = segment[(parenStart + 1)..^1];
+
+        return type.ToUpperInvariant() switch
         {
-            ClipToBounds = true,
-            Child = tb
+            "PCIROOT" => $"PCIROOT (bus {value})",
+            "PCI"     => $"PCI (0x{value})",
+            "USBROOT" => $"USBROOT (hub {value})",
+            "USB"     => $"USB (port {value})",
+            "USBMI"   => $"USBMI (interface {value})",
+            _         => segment
         };
+    }
+
+    /// <summary>
+    /// Builds a visual chain of segment "pills" connected by arrows.
+    /// When highlight is true, segments are shown in blue (these are the stored identifier).
+    /// When false, segments are shown in gray (common prefix, not stored).
+    /// </summary>
+    private static FrameworkElement BuildSegmentChain(string[] segments, bool highlight)
+    {
+        var panel = new WrapPanel();
+
+        for (int i = 0; i < segments.Length; i++)
+        {
+            if (i > 0)
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = " → ",
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = Brushes.Gray,
+                    FontSize = 10,
+                    FontFamily = new FontFamily("Consolas")
+                });
+            }
+
+            Brush bg, border, fg;
+            if (highlight)
+            {
+                bg     = new SolidColorBrush(Color.FromRgb(0xDB, 0xE8, 0xFF));
+                border = new SolidColorBrush(Color.FromRgb(0x64, 0x95, 0xED));
+                fg     = new SolidColorBrush(Color.FromRgb(0x1A, 0x3A, 0x8A));
+            }
+            else
+            {
+                bg     = new SolidColorBrush(Color.FromRgb(0xF0, 0xF0, 0xF0));
+                border = new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC));
+                fg     = Brushes.DimGray;
+            }
+
+            var pill = new Border
+            {
+                Background = bg,
+                BorderBrush = border,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(5, 2, 5, 2),
+                Margin = new Thickness(0, 1, 0, 1),
+                Child = new TextBlock
+                {
+                    Text = FormatSegmentLabel(segments[i]),
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize = 10,
+                    Foreground = fg,
+                    FontWeight = highlight ? FontWeights.SemiBold : FontWeights.Normal,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+
+            panel.Children.Add(pill);
+        }
+
+        return panel;
     }
 
     private void UpdateConfig()
@@ -330,47 +568,16 @@ public partial class BindingPage : UserControl
     {
         var config = new TouchMapperConfig();
 
-        // Build TopologyGroup entries from chained rows
-        for (var gi = 0; gi < _state.LiveTouchGroups.Count; gi++)
-        {
-            var group = _state.LiveTouchGroups[gi];
-            var groupRows = _rows
-                .Where(r => !r.IsStandalone && group.Contains(r.Touch))
-                .OrderBy(r => r.Touch.HopCount)
-                .ToList();
-
-            var anchorRow = groupRows.FirstOrDefault(r => r.MonitorCombo.SelectedItem is MonitorInfo);
-            if (anchorRow is null) continue;
-
-            var anchorMonitor = (MonitorInfo)anchorRow.MonitorCombo.SelectedItem!;
-            var cfgGroup = new TopologyGroup
-            {
-                AnchorEdidSerial = anchorMonitor.EdidSerial,
-                AnchorFriendlyName = anchorMonitor.MonitorModel
-            };
-
-            foreach (var childRow in groupRows.Skip(1))
-            {
-                if (childRow.MonitorCombo.SelectedItem is not MonitorInfo childMonitor) continue;
-                cfgGroup.Children.Add(new MonitorProfile
-                {
-                    EdidSerial = childMonitor.EdidSerial,
-                    FriendlyName = childMonitor.MonitorModel
-                });
-            }
-
-            config.TopologyGroups.Add(cfgGroup);
-        }
-
-        // Build DirectMapping entries from standalone rows
-        foreach (var row in _rows.Where(r => r.IsStandalone))
+        foreach (var row in _rows)
         {
             if (row.MonitorCombo.SelectedItem is not MonitorInfo monitor) continue;
-            config.DirectMappings.Add(new DirectMapping
+            if (!_identifiers.TryGetValue(row.Touch, out var identifier)) continue;
+
+            config.Mappings.Add(new TouchMapping
             {
-                UsbLocationPath = row.Touch.UsbLocationPath,
+                UsbIdentifier = identifier,
                 MonitorEdidSerial = monitor.EdidSerial,
-                MonitorFriendlyName = monitor.MonitorModel
+                MonitorFriendlyName = monitor.DisplayLabel
             });
         }
 
@@ -678,6 +885,15 @@ public partial class BindingPage : UserControl
     }
 
     // ── Auto-Detect Walkthrough ────────────────────────────────────────
+
+    private async void Rescan_Click(object sender, RoutedEventArgs e)
+    {
+        RescanButton.Content = "Scanning...";
+        _state.TouchDevices.Clear(); // force re-scan
+        await RunScanAsync();
+        RebuildUI();
+        RescanButton.Content = "Re-scan Topology";
+    }
 
     private void AutoDetect_Click(object sender, RoutedEventArgs e)
     {

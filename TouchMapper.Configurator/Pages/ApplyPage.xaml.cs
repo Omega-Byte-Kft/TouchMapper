@@ -27,22 +27,11 @@ public partial class ApplyPage : UserControl
         var lines = new List<string>();
 
         var cfg = _state.Config;
-        if (cfg.TopologyGroups.Count > 0)
+        if (cfg.Mappings.Count > 0)
         {
-            lines.Add($"Chained groups: {cfg.TopologyGroups.Count}");
-            foreach (var g in cfg.TopologyGroups)
-            {
-                var names = new List<string> { g.AnchorFriendlyName + " (anchor)" };
-                names.AddRange(g.Children.Select(c => c.FriendlyName));
-                lines.Add($"  - {string.Join(", ", names)}");
-            }
-        }
-
-        if (cfg.DirectMappings.Count > 0)
-        {
-            lines.Add($"Individual mappings: {cfg.DirectMappings.Count}");
-            foreach (var dm in cfg.DirectMappings)
-                lines.Add($"  - {dm.MonitorFriendlyName} ({dm.MonitorEdidSerial})");
+            lines.Add($"Mappings: {cfg.Mappings.Count}");
+            foreach (var m in cfg.Mappings)
+                lines.Add($"  - {m.MonitorFriendlyName} ({m.MonitorEdidSerial}) ← {m.UsbIdentifier}");
         }
 
         if (lines.Count == 0)
