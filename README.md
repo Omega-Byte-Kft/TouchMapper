@@ -19,6 +19,10 @@ Manually fixing this through *Tablet PC Settings* every time is tedious and erro
 >
 > Standalone (non-chained) touch devices are also supported via direct USB path matching, but the daisy-chain topology is the primary and most reliable detection method.
 
+## Screenshot
+
+![Assign Bindings](docs/screenshot-bindings.png)
+
 ## How It Works
 
 TouchMapper consists of two components:
@@ -42,9 +46,7 @@ TouchMapper consists of two components:
 
 - Mappings are written to the Windows Wisp Pen Digimon registry (`HKLM\SOFTWARE\Microsoft\Wisp\Pen\Digimon`), which is the native mechanism Windows uses to associate HID digitizers with displays.
 - After writing the registry entries, HID devices are restarted via `pnputil` to force Windows to pick up the new mapping.
-- Two mapping modes are supported:
-  - **Topology Groups** — For daisy-chained touch monitors sharing a USB path.
-  - **Direct Mappings** — For standalone touch devices matched by USB location path.
+- A unified mapping model is used: each touch device is identified by its unique USB path suffix from the divergence point (for grouped devices) or full path (for standalone devices). Greedy longest-first suffix matching resolves ambiguity.
 
 **Service:**
 
@@ -86,14 +88,13 @@ All projects target `net8.0-windows`.
 ### Initial Setup
 
 1. **Run the Configurator** as administrator (`TouchMapper.Configurator.exe`).
-2. Click **Start Scan** — the wizard detects all active monitors and touch devices.
-3. Review the detected **USB topology** (chained and standalone devices).
-4. On the **Binding** page, assign each touch device to its monitor:
+2. The wizard auto-scans for all active monitors and touch devices.
+3. On the **Assign Bindings** page, assign each touch device to its monitor:
    - Use **Auto-Detect Bindings** to walk through each display — just touch the screen when prompted.
    - Or manually select from the dropdown menus.
+   - Use **Test** to verify a single binding with a fullscreen overlay.
    - Use **Debug Touch** to see raw HID device paths in real time.
-5. **Name** your monitors for easy identification.
-6. Click **Apply** to save the configuration and install the background service.
+4. Click **Apply** to save the configuration and install the background service.
 
 ### After Setup
 
@@ -114,7 +115,7 @@ TouchMapper/
     Mapping/                    MappingEngine, TopologyAnalyzer, WispManager
     Models/                     TouchMapperConfig, MonitorInfo, TouchDeviceInfo
   TouchMapper.Configurator/   WPF setup wizard
-    Pages/                      WelcomePage, ScanPage, BindingPage, NamingPage, ApplyPage
+    Pages/                      WelcomePage, BindingPage, ApplyPage
     AutoDetectWindow.xaml       Fullscreen overlay for touch identification
     TestOverlayWindow.xaml      Test mapping verification overlay
   TouchMapper.Service/         Windows background service
